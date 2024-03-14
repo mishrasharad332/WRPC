@@ -1,10 +1,8 @@
-import streamlit as st
 from datetime import datetime
+import streamlit as st
 import pandas as pd
 import requests
-from io import BytesIO  # For in-memory PDF handling
 import fitz  # For PDF processing
-import ipywidgets as widgets
 import os
 
 # Function to search for text in PDF and extract the row
