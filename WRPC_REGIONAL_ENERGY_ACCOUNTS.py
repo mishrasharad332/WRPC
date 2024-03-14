@@ -1,15 +1,12 @@
 import streamlit as st
 from datetime import datetime
-from IPython.display import display, Markdown
+from IPython.display import display, clear_output
 import pandas as pd
-import io
 import requests
 from io import BytesIO  # For in-memory PDF handling
 import fitz  # For PDF processing
-import re
 import ipywidgets as widgets
 import os
-from IPython.display import clear_output
 
 # Function to search for text in PDF and extract the row
 def search_text_in_pdf(title, url, search_text):
