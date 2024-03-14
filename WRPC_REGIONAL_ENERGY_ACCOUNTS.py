@@ -1,3 +1,4 @@
+import streamlit as st
 from datetime import datetime
 from IPython.display import display, Markdown
 import pandas as pd
@@ -42,7 +43,6 @@ def search_text_in_pdf(title, url, search_text):
                 break  # Exit loop if the first occurrence is found
 
     return found_row
-
 
 # Function to create clickable links in Excel
 def create_hyperlink(url, title):
@@ -133,46 +133,22 @@ def extract_data(year, title_filter):
 
     writer.close()
 # Define a function to be called when the button is clicked
-def on_button_clicked(b):
+# def on_button_clicked(b):
+#     extract_data(year_dropdown.value, title_filter.value)
 
-    
+if __name__ == '__main__':
+    # REGIONAL ENERGY ACCOUNTS
+    st.markdown('### REGIONAL ENERGY ACCOUNTS')
 
-    extract_data(year_dropdown.value, title_filter.value)
+    # Define the years and title filters for dropdown options
+    years = ['2023', '2022', '2021', '2020', '2019', '2018', '2017', '2016', '2015', '2014', '2013', '2012', '2011', '2010']
 
-# REGIONAL ENERGY ACCOUNTS
-display(Markdown('### REGIONAL ENERGY ACCOUNTS'))
+    # Create dropdown widgets for selecting the year and title filter
+    selected_year = st.selectbox('Select a Year:', years)
+    current_month = datetime.now().strftime('%B')
+    selected_month = st.text_input('Enter a Month:', current_month)
 
-# Define the years and title filters for dropdown options
-years =['2023', '2022', '2021', '2020', '2019', '2018', '2017', '2016', '2015', '2014', '2013', '2012', '2011', '2010']
-
-  # Add more years as needed
-# title_filters = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
-
-# Create dropdown widgets for selecting the year and title filter
-year_dropdown = widgets.Combobox(
-    options=years, 
-    description='Year:',
-    disabled=False, value=years[0],        ensure_option=True,
-)
-# title_filter_dropdown = widgets.Combobox(
-#     options=title_filters, description='Title Filter:',
-#         ensure_option=True,
-#     value= title_filters[0],
-#     disabled=False
-#     )
-current_month = datetime.now().strftime('%B')
-title_filter = widgets.Text(
-    description='Month:',
-    value=current_month
-)
-
-# Create a button widget for triggering data extraction
-button = widgets.Button(description='Extract Data')
-
-# Display the widgets
-display(year_dropdown)
-display(title_filter)
-display(button)
-
-# Attach the function to the button's click event
-button.on_click(on_button_clicked)
+    # Create a button widget for triggering data extraction
+    if st.button('Extract Data'):
+        extract_data(selected_year, selected_month)
+        st.write(f"Data extracted for Year: {selected_year}, Month: {selected_month}")
