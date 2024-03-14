@@ -1,6 +1,5 @@
 import streamlit as st
 from datetime import datetime
-from IPython.display import display, clear_output
 import pandas as pd
 import requests
 from io import BytesIO  # For in-memory PDF handling
@@ -106,7 +105,8 @@ def extract_data(year, title_filter):
         df = search_text_in_multiple_pdfs(pdf_links, "Arinsun_RUMS", year)  # You can adjust the search text as needed
 
         # Display the DataFrame
-        display(df)
+        # display(df)
+        st.write(df)
 
         filename = f"Extracted Data_WRPC_SRPC_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
         sheet_name = 'WRPC_Monthly Scheduled Revenue'
@@ -129,9 +129,9 @@ def extract_data(year, title_filter):
         print(f"Error: {response.status_code}")
 
     writer.close()
-# Define a function to be called when the button is clicked
-# def on_button_clicked(b):
-#     extract_data(year_dropdown.value, title_filter.value)
+    # Define a function to be called when the button is clicked
+    # def on_button_clicked(b):
+    #     extract_data(year_dropdown.value, title_filter.value)
 
 if __name__ == '__main__':
     # REGIONAL ENERGY ACCOUNTS
