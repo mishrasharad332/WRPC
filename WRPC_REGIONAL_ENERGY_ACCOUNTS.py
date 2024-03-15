@@ -126,7 +126,7 @@ def extract_data(year, title_filter):
     else:
         print(f"Error: {response.status_code}")
 
-    writer.close()
+    #writer.close()
     # Define a function to be called when the button is clicked
     # def on_button_clicked(b):
     #     extract_data(year_dropdown.value, title_filter.value)
