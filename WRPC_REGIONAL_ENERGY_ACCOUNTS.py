@@ -6,7 +6,27 @@ import requests
 import fitz  # For PDF processing
 import os
 
-wb = Workbook()
+def create_file(df, sheet_name):
+    st.write(f"Saving Data.")
+    wb = Workbook()
+    filename = f"Extracted Data_WRPC_SRPC_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
+
+    # Check file existence and handle sheet existence
+    if not os.path.exists(filename):
+        st.write(f"File: {filename} Does not exist")
+        wb.save(filename)
+    else:
+        st.write(f"File: {filename} exist!")
+        wb = load_workbook(filename)
+        wb.create_sheet(title=sheet_name)
+        ws2 = wb[sheet_name]
+
+        for index, row in df.iterrows():  # Iterate over DataFrame rows
+            # Split the 'PDF URL' column into two separate columns for hyperlink function
+            row["PDF URL"] = row["PDF URL"].split(", ")[1].strip(')')
+            row_list = row.to_list()  # Convert DataFrame row to a list
+            ws2.append(row_list)  # Append the row to the worksheet
+        wb.save(filename)
 
 # Function to search for text in PDF and extract the row
 def search_text_in_pdf(title, url, search_text):
@@ -77,7 +97,6 @@ def search_text_in_multiple_pdfs(pdf_links, search_text,year):
     df = pd.concat([row_to_dataframe(row, title, url, year) for row, title, url in all_rows], ignore_index=True)
     return df
 
-
 # Define a function to extract data based on selected year and title filter
 def extract_data(year, title_filter):
     wrpc_base_url = "https://www.wrpc.gov.in"
@@ -104,28 +123,9 @@ def extract_data(year, title_filter):
         
         # Search for the text in the multiple PDFs and append the results into one DataFrame
         df = search_text_in_multiple_pdfs(pdf_links, "Arinsun_RUMS", year)  # You can adjust the search text as needed
-
         st.write(df)
-        create_file(df)
-
-def create_file(df):
-    filename = f"Extracted Data_WRPC_SRPC_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
-    sheet_name = 'WRPC_Monthly Scheduled Revenue'
-
-    # Check file existence and handle sheet existence
-    if not os.path.exists(filename):
-        wb.save(filename)
-    else:
-        wb = load_workbook(filename)
-        ws2 = wb[sheet_name]
-
-        for index, row in df.iterrows():  # Iterate over DataFrame rows
-            # Split the 'PDF URL' column into two separate columns for hyperlink function
-            row["PDF URL"] = row["PDF URL"].split(", ")[1].strip(')')
-            row_list = row.to_list()  # Convert DataFrame row to a list
-            ws2.append(row_list)  # Append the row to the worksheet
-        # Save the workbook
-        wb.save(filename)
+        sheet_name = 'WRPC_Monthly Scheduled Revenue'
+        create_file(df,sheet_name)
 
 if __name__ == '__main__':
     # REGIONAL ENERGY ACCOUNTS
@@ -142,4 +142,4 @@ if __name__ == '__main__':
     # Create a button widget for triggering data extraction
     if st.button('Extract Data'):
         extract_data(selected_year, selected_month)
-        st.write(f"Data extracted for Year: {selected_year}, Month: {selected_month}")
+        st.write(f"Data extracted for: {selected_month}, {selected_year}")
