@@ -1,9 +1,12 @@
+from openpyxl import Workbook, load_workbook
 from datetime import datetime
 import streamlit as st
 import pandas as pd
 import requests
 import fitz  # For PDF processing
 import os
+
+wb = Workbook()
 
 # Function to search for text in PDF and extract the row
 def search_text_in_pdf(title, url, search_text):
@@ -102,34 +105,27 @@ def extract_data(year, title_filter):
         # Search for the text in the multiple PDFs and append the results into one DataFrame
         df = search_text_in_multiple_pdfs(pdf_links, "Arinsun_RUMS", year)  # You can adjust the search text as needed
 
-        # Display the DataFrame
-        # display(df)
         st.write(df)
+        create_file(df)
 
-        filename = f"Extracted Data_WRPC_SRPC_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
-        sheet_name = 'WRPC_Monthly Scheduled Revenue'
+def create_file(df):
+    filename = f"Extracted Data_WRPC_SRPC_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
+    sheet_name = 'WRPC_Monthly Scheduled Revenue'
 
-        # Check file existence and handle sheet existence
-        if not os.path.exists(filename):
-            # Create the file and write the DataFrame
-            with pd.ExcelWriter(filename, engine='openpyxl') as writer:
-                df.to_excel(writer, sheet_name=sheet_name, index=False)
-        else:
-            # Append data to the existing file, handling sheet existence
-            with pd.ExcelWriter(filename, engine='openpyxl', mode='a', if_sheet_exists='overlay') as writer:
-                # Get the starting row for appending (ensuring sheet exists)
-                startrow = writer.sheets[sheet_name].max_row
-                # Append the DataFrame
-                df.to_excel(writer, sheet_name=sheet_name, startrow=startrow, index=False, header=False)
-
-        print(f"\nSaving to '{filename}'->'{sheet_name}'")
+    # Check file existence and handle sheet existence
+    if not os.path.exists(filename):
+        wb.save(filename)
     else:
-        print(f"Error: {response.status_code}")
+        wb = load_workbook(filename)
+        ws2 = wb[sheet_name]
 
-    #writer.close()
-    # Define a function to be called when the button is clicked
-    # def on_button_clicked(b):
-    #     extract_data(year_dropdown.value, title_filter.value)
+        for index, row in df.iterrows():  # Iterate over DataFrame rows
+            # Split the 'PDF URL' column into two separate columns for hyperlink function
+            row["PDF URL"] = row["PDF URL"].split(", ")[1].strip(')')
+            row_list = row.to_list()  # Convert DataFrame row to a list
+            ws2.append(row_list)  # Append the row to the worksheet
+        # Save the workbook
+        wb.save(filename)
 
 if __name__ == '__main__':
     # REGIONAL ENERGY ACCOUNTS
