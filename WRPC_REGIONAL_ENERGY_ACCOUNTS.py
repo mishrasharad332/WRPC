@@ -25,7 +25,8 @@ def fetch_pdfs(year, title_filter):
 
     ui_data = ""
     pdf_links = []
-    chckbox_headers = []
+    titles = []
+    url_data= {}
 
     # Check if the request was successful (status code 200)
     if response.status_code == 200:
@@ -59,27 +60,26 @@ def fetch_pdfs(year, title_filter):
                 status_text = "Revised" if status.strip() == "R" else "Issued"
                 # Construct the output string
                 output = f"Week{week}: {from_date} to {to_date}\n({status_text} on {issue_date})"
-                st.markdown(f"**{output}**")
+                titles.append(output)
+                # st.markdown(f"**{output}**")
 
                 # st.session_state[pdf_link] = False  # Initialize with default value
-                st.checkbox(pdf_link)
+                # st.checkbox(pdf_link)
     
-    
+
     checkbox_values = []
+    url_data = dict(zip(titles, pdf_links))
+
+    for title, pdf_link in zip(titles, pdf_links):
+        checkbox_values[title] = st.checkbox(f"{title}: {pdf_link}")
+
+    # checkbox_values = {title: st.checkbox(f"{title}: {url}") for title, url in url_data.items(), pdf_url: url for url in url_data.items()}
+    # checkbox_values = {title: st.checkbox(title) for title,pdf_link in url_data,pdf_links}
 
     if st.button("Continue"):
-        for label in pdf_links:
-            checkbox_values.append(st.checkbox(label))
+        for title, checked in checkbox_values.items():
+            st.write(f"{pdf_links[titles.index(title)]}: {checked}")
 
-        for label, value in zip(pdf_links, checkbox_values):
-            st.write(f"{label}: {value}")
-
-    # if st.button("Continue"):
-    #     for label in pdf_links:
-    #         checkbox_values.append(st.checkbox(label))
-
-        # for label, value in zip(pdf_links, checkbox_values):
-        #     st.write(f"{label}: {value}")
 
 
 if __name__ == '__main__':
