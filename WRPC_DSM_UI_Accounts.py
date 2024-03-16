@@ -1,7 +1,7 @@
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, Color
 from openpyxl.styles.colors import BLUE
 from datetime import datetime
-from openpyxl.styles import Font, Color
 import streamlit as st
 import pandas as pd
 import requests
@@ -11,6 +11,35 @@ import re
 
 selected_pdf = []
 search_text = "Arinsun_RUMS"
+
+def create_file(df, sheet_name):
+    filename = f"Extracted Data_WRPC_SRPC_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
+
+    # Check file existence
+    if not os.path.exists(filename):
+        wb = Workbook()
+        wb.save(filename)
+    else:
+        wb = load_workbook(filename)
+
+    # Check if sheet exists
+    if sheet_name not in wb.sheetnames:
+        wb.create_sheet(title=sheet_name)
+    ws2 = wb[sheet_name]
+
+    # Write specific column names as headers
+    headers = ['Date', 'Entity', 'Injection', 'Schedule', 'DSM Payable', 'DSM Receivable', 'Net DMC']
+    ws2.append(headers)
+
+    # Append data to the worksheet
+    for index, row in df.iterrows():  # Iterate over DataFrame rows
+        # Split the 'PDF URL' column into two separate columns for hyperlink function
+        # row["PDF URL"] = row["PDF URL"].split(", ")[1].strip(')')
+        row_list = row.to_list()  # Convert DataFrame row to a list
+        ws2.append(row_list)  # Append the row to the worksheet
+
+    # Save the workbook
+    wb.save(filename)
 
 def create_dataframe(financial_data):
     if not financial_data:
@@ -181,34 +210,8 @@ def fetch_pdfs(year, title_filter):
         df = pd.DataFrame(table_data)
         st.write(df)
 
-        filename = f"Extracted Data_WRPC_SRPC_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
         sheet_name = 'WRPC_DSM'
-
-        # Check file existence and handle sheet existence
-        if not os.path.exists(filename):
-            # Create the file and write the DataFrame
-            writer = pd.ExcelWriter(filename, engine='openpyxl')
-            df.to_excel(writer, sheet_name=sheet_name, index=False)
-        else:
-            # Append data to the existing file, handling sheet existence
-            writer = pd.ExcelWriter(filename, engine='openpyxl', mode='a', if_sheet_exists='overlay')  # Key change here
-
-            # Get the starting row for appending (ensuring sheet exists)
-            startrow = writer.sheets[sheet_name].max_row
-
-            # Append the DataFrame
-            df.to_excel(writer, sheet_name=sheet_name, startrow=startrow, index=False, header=False)
-
-        st.write(f"\nSaving to '{filename}'->'{sheet_name}'")
-        # Get the workbook and worksheet objects
-        workbook = writer.book
-        worksheet = writer.sheets[sheet_name]
-
-        # Set the hyperlink color to blue
-        font_blue = Font(color=Color(rgb=BLUE))
-        for cell in worksheet['F']:
-                cell.font = font_blue
-        writer.close()
+        create_file(df, sheet_name)
 
 if __name__ == '__main__':
     st.markdown('### WRPC DSM UI ACCOUNTS')
@@ -219,7 +222,6 @@ if __name__ == '__main__':
     selected_month = st.selectbox("Select a month", options=months, index=0, format_func=lambda x: x.title())
     st.write("Please select at least one pdf before continue")
     fetch_pdfs(selected_year, selected_month)
-    # if st.button('Extract Data'): 
-
-    # if st.button('Extract Data'):
+ 
+    print("Done")
         

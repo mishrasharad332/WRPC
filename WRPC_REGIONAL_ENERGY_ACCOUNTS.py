@@ -90,7 +90,6 @@ def row_to_dataframe(row, title, url, year):
     return df
 
 
-
 # Function to perform search on multiple PDF URLs and append results into one DataFrame
 def search_text_in_multiple_pdfs(pdf_links, search_text,year):
     all_rows = []
@@ -147,10 +146,8 @@ if __name__ == '__main__':
     current_month = datetime.now().strftime('%B')
     selected_month = st.text_input('Enter a Month:', current_month)
 
-
     # Create a button widget for triggering data extraction
     if st.button('Extract Data'):
         extract_data(selected_year, selected_month)
         st.write(f"Data extracted for: {selected_month}, {selected_year}")
-        
-        
+        print('Done')
