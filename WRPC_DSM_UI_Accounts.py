@@ -8,6 +8,9 @@ import requests
 import fitz  # For PDF processing
 import os
 import re
+import streamlit as st
+import io  # Import io module
+import pdfplumber  # Alternative library for PDF processing
 
 selected_pdf = []
 search_text = "Arinsun_RUMS"
@@ -28,7 +31,7 @@ def create_file(df, sheet_name):
     ws2 = wb[sheet_name]
 
     # Write specific column names as headers
-    headers = ['Date', 'Entity', 'Injection', 'Schedule', 'DSM Payable', 'DSM Receivable', 'Net DMC']
+    headers = ['Date', 'Entity', 'Injection', 'Schedule', 'DSM Payable', 'DSM Receivable', 'Net DMC', 'PDF URL']
     ws2.append(headers)
 
     # Append data to the worksheet
@@ -63,65 +66,33 @@ def create_dataframe(financial_data):
     })
     return df
 
-def extract_financial_data(text, search_text="Arinsun_RUMS", num_lines=4):
-    try:
-        # Find the index of the first occurrence of the search text
-        start_index = text.find(search_text)
-        if start_index == -1:
-            print(f"Search text '{search_text}' not found.")
-            return None, -1
-
-        # Split the text into lines
-        lines = text.split("\n")
-
-        # Find the index of the line containing the search text
-        line_index = [i for i, line in enumerate(lines) if search_text in line][0]
-
-        # Extract the lines below the first occurrence of the search text
-        data_lines = lines[line_index + 1 : line_index + 1 + num_lines]
-
-        print(data_lines)
-
-        # Process the data lines
-        financial_data = [line.strip() for line in data_lines]
-
-        return financial_data, line_index
-    except Exception as e:
-        print(f"Error extracting financial data: {e}")
-        return None, -1
-
 def extract_text_from_pdf(pdf_url):
     try:
         # Download the PDF file
         pdf_data = requests.get(pdf_url).content
 
         # Load the PDF data
-        pdf_document = fitz.open(stream=pdf_data, filetype="pdf")
+        pdf = pdfplumber.open(io.BytesIO(pdf_data))
 
         # Extract text from each page
         text = ''
-        for page_num in range(len(pdf_document)):
-            page = pdf_document.load_page(page_num)
-            text += page.get_text()
+        for page in pdf.pages:
+            text += page.extract_text()
         return text
     except Exception as e:
         print(f"Error extracting text from PDF: {e}")
         return None
-    
+
 # Function to fetch PDFs
 def fetch_pdfs(year, title_filter):
-    
     wrpc_base_url = "https://www.wrpc.gov.in"
     search_text = "Arinsun_RUMS"
     UI_link = wrpc_base_url + "/assets/data/UI_" + year + '.txt'
-    # Create a session state object
     session_state = st.session_state
 
-    # Check if checkbox values exist in session state
     if 'checkbox_values' not in session_state:
         session_state.checkbox_values = {}
 
-    # Make the GET request
     response = requests.get(UI_link)
 
     ui_data = ""
@@ -129,82 +100,64 @@ def fetch_pdfs(year, title_filter):
     titles = []
     url_data= {}
     
-    # Check if the request was successful (status code 200)
     if response.status_code == 200:
-        ui_data = response.text     # Split the response text by lines
+        ui_data = response.text
 
-    # Split the response by lines
     lines = ui_data.split("\n")
     session_state = st.session_state
 
-    # Iterate through each line and process the data, skipping the header
     for line in lines[1:]:
-        # Split the line by commas
         parts = line.split(",")
         
         if len(parts) == 5:
             from_date, to_date, link, issue_date, status = parts
-            # Extract "week" and "yy" values from the link
             week = re.search(r'week=([\w.]+)', link).group(1)
             yy = re.search(r'yy=(\w+)', link).group(1)
-            potential_month = yy.lower()[:3]  # Extract first 3 characters (potential month abbreviation)
+            potential_month = yy.lower()[:3]
 
-            # Comparison and filtering
             filtered_month = (title_filter.lower().startswith(potential_month) and title_filter) or None
 
             if filtered_month:
-                # Construct the PDF link
                 pdf_link = f"https://www.wrpc.gov.in/htm/{yy}/sum{week}.pdf"
                 pdf_links.append(pdf_link)
 
-                # Determine the status text
                 status_text = "Revised" if status.strip() == "R" else "Issued"
-                # Construct the output string
                 output = f"Week{week}: {from_date} to {to_date}\n({status_text} on {issue_date})"
                 titles.append(output)
-   
 
     checkbox_values = []
     url_data = dict(zip(titles, pdf_links))
 
     checkbox_values = {url: st.checkbox(f"{title}: {url}") for url, title in url_data.items()}
     
-    # Button to continue
-    
     if st.button("Continue"):
         for url, checked in checkbox_values.items():
-            # st.write(f"Title: {url_data[url]}, URL: {url}, Checked: {checked}")
             selected_pdf.append(url_data[url])
 
-        # if st.button('Extract Data'):
-            
         table_data = []
 
         for pdf_url in selected_pdf:
             print(pdf_url)
 
-            # Extract text from the PDF
             extracted_text = extract_text_from_pdf(pdf_url)
 
-            # Define the pattern to extract the headers and data rows
+            # Check if extracted text is bytes-like object and decode it to string
+            if isinstance(extracted_text, bytes):
+                extracted_text = extracted_text.decode("utf-8")
+
             pattern_combined = re.compile(r'(\d{2}-\w{3}|Total)\s(Arinsun_RUMS)\s(\d+\.\d+)\s(\d+\.\d+)\s?(\d+\.\d+)?\s?(\d+\.\d+)?\s?(\-?\d+\.\d+)?')
 
-            # Find all matches in the text
             matches = pattern_combined.findall(extracted_text)
 
-            # Define headers
             headers = ['Date', 'Entity', 'Injection', 'Schedule', 'DSM Payable', 'DSM Receivable', 'Net DMC']
 
-            # Initialize a list to store the structured data
             structured_data = []
 
-            # Iterate over matches and create dictionaries for each row
             for match in matches:
                 row_dict = dict(zip(headers, match))
-                row_dict['PDF URL'] = pdf_url  # Add pdf_url to the row dictionary
+                row_dict['PDF URL'] = pdf_url
                 structured_data.append(row_dict)
 
-            # Append the structured data to the table_data list
             table_data.extend(structured_data)
 
         df = pd.DataFrame(table_data)
@@ -224,4 +177,3 @@ if __name__ == '__main__':
     fetch_pdfs(selected_year, selected_month)
  
     print("Done")
-        

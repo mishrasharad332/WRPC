@@ -3,8 +3,9 @@ from datetime import datetime
 import streamlit as st
 import pandas as pd
 import requests
-import fitz  # For PDF processing
+import pdfplumber  # For PDF processing
 import os
+import io
 
 def create_file(df, sheet_name):
     filename = f"Extracted Data_WRPC_SRPC_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
@@ -42,15 +43,14 @@ def search_text_in_pdf(title, url, search_text):
     pdf_bytes = response.content
 
     # Open the PDF file
-    pdf_document = fitz.open(stream=pdf_bytes)
+    pdf = pdfplumber.open(io.BytesIO(pdf_bytes))
 
     # Initialize variables to store the extracted row
     found_row = None
 
     # Loop through each page in the PDF
-    for page_num in range(len(pdf_document)):
-        page = pdf_document.load_page(page_num)
-        text = page.get_text()
+    for page in pdf.pages:
+        text = page.extract_text()
 
         # Check if the search text exists in the current page
         if search_text in text:
@@ -66,6 +66,7 @@ def search_text_in_pdf(title, url, search_text):
             if found_row:
                 break  # Exit loop if the first occurrence is found
 
+    pdf.close()
     return found_row
 
 # Function to create clickable links in Excel
@@ -80,8 +81,16 @@ def row_to_dataframe(row, title, url, year):
     # Split the row into columns based on whitespace
     columns = row.split()  # Change from row[0].split() to row.split()
 
+    # Verify if the number of columns matches the expected number
+    if len(columns) % 4 != 0:
+        print(f"Invalid row data: {row}")
+        return None
+
+    # Group the columns into chunks of 4 to represent each row of data
+    chunked_columns = [columns[i:i+4] for i in range(0, len(columns), 4)]
+
     # Create DataFrame with specified column names
-    df = pd.DataFrame([columns], columns=["RE Generator", "Schedule (MU)", "Actual (MU)", "Deviation (MU)"])
+    df = pd.DataFrame(chunked_columns, columns=["RE Generator", "Schedule (MU)", "Actual (MU)", "Deviation (MU)"])
 
     # Add year and PDF URL to DataFrame
     df["Year"] = year
@@ -91,9 +100,9 @@ def row_to_dataframe(row, title, url, year):
 
 
 # Function to perform search on multiple PDF URLs and append results into one DataFrame
-def search_text_in_multiple_pdfs(pdf_links, search_text,year):
+def search_text_in_multiple_pdfs(pdf_links, search_text, year):
     all_rows = []
-    for title,url  in pdf_links:
+    for title, url in pdf_links:
         print(f"Searching {search_text} in {url}")
 
         found_row = search_text_in_pdf(title, url, search_text)
@@ -132,7 +141,7 @@ def extract_data(year, title_filter):
         df = search_text_in_multiple_pdfs(pdf_links, "Arinsun_RUMS", year)  # You can adjust the search text as needed
         st.write(df)
         sheet_name = 'WRPC_Monthly Scheduled Revenue'
-        create_file(df,sheet_name)
+        create_file(df, sheet_name)
 
 if __name__ == '__main__':
     # REGIONAL ENERGY ACCOUNTS
